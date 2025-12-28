@@ -1,12 +1,23 @@
+const crypto = require('crypto');
 const { logger, webSearchKeys } = require('@librechat/data-schemas');
 const { Tools, CacheKeys, Constants, FileSources } = require('librechat-data-provider');
+const { getAppConfig } = require('~/server/services/Config');
 const {
   MCPOAuthHandler,
   MCPTokenStorage,
   normalizeHttpError,
   extractWebSearchEnvVars,
+  getBalanceConfig,
 } = require('@librechat/api');
+
+
 const {
+  // user ops
+  findUser,
+  createUser,
+  updateUser,
+
+  // deletes / cleanup
   deleteAllUserSessions,
   deleteAllSharedLinks,
   updateUserPlugins,
@@ -16,10 +27,12 @@ const {
   deleteUserKey,
   deleteConvos,
   deleteFiles,
-  updateUser,
   findToken,
   getFiles,
 } = require('~/models');
+
+const { createTransaction } = require('~/models/Transaction');
+
 const {
   ConversationTag,
   Transaction,
@@ -32,16 +45,17 @@ const {
   Token,
   User,
 } = require('~/db/models');
+
 const { updateUserPluginAuth, deleteUserPluginAuth } = require('~/server/services/PluginService');
 const { verifyEmail, resendVerificationEmail } = require('~/server/services/AuthService');
 const { getMCPManager, getFlowStateManager, getMCPServersRegistry } = require('~/config');
 const { needsRefresh, getNewS3URL } = require('~/server/services/Files/S3/crud');
 const { processDeleteRequest } = require('~/server/services/Files/process');
-const { getAppConfig } = require('~/server/services/Config');
 const { deleteToolCalls } = require('~/models/ToolCall');
 const { deleteUserPrompts } = require('~/models/Prompt');
 const { deleteUserAgents } = require('~/models/Agent');
 const { getLogStores } = require('~/cache');
+
 
 const getUserController = async (req, res) => {
   const appConfig = await getAppConfig({ role: req.user?.role });
@@ -110,7 +124,7 @@ const deleteUserFiles = async (req) => {
 };
 
 const updateUserPluginsController = async (req, res) => {
-  const appConfig = await getAppConfig({ role: req.user?.role });
+  const appConfig = await getAppConfig();
   const { user } = req;
   const { pluginKey, action, auth, isEntityTool } = req.body;
   try {
@@ -304,6 +318,8 @@ const resendVerificationController = async (req, res) => {
   }
 };
 
+
+
 /**
  * OAuth MCP specific uninstall logic
  */
@@ -406,6 +422,134 @@ const maybeUninstallOAuthMCP = async (userId, pluginKey, appConfig) => {
   await flowManager.deleteFlow(flowId, 'mcp_oauth');
 };
 
+const ensureUserController = async (req, res) => {
+  try {
+    const { email, secret } = req.body;
+
+    // 1️⃣ Validaciones básicas
+    if (
+      !email ||
+      typeof email !== 'string' ||
+      !secret ||
+      typeof secret !== 'string'
+    ) {
+      return res.status(400).json({ message: 'Invalid payload' });
+    }
+
+    // 2️⃣ Verificar secret contra env
+    if (!timingSafeEqual(secret, process.env.OPENID_CLIENT_SECRET)) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    // 3️⃣ Buscar usuario por email
+    let user = await findUser(
+      { email },
+      'email _id provider role username name emailVerified'
+    );
+
+    if (user) {
+      return res.status(200).json({
+        user,
+        created: false,
+      });
+    }
+
+    // 4️⃣ Crear usuario OpenID
+    const appConfig = await getAppConfig();
+
+    const newUserData = {
+      provider: 'openid',
+      email,
+      username: email.split('@')[0],
+      name: email,
+      role: 'user',
+      avatar: null,
+      emailVerified: true, // OpenID ya validó el email
+    };
+
+    user = await createUser(
+      newUserData,
+      appConfig.balance,
+      true, // disableTTL
+      true
+    );
+
+    return res.status(200).json({
+      user,
+      created: true,
+    });
+  } catch (e) {
+    return res.status(500).json({ message: 'Something went wrong.' });
+  }
+};
+
+const timingSafeEqual = (a, b) => {
+  const ab = Buffer.from(a ?? '', 'utf8');
+  const bb = Buffer.from(b ?? '', 'utf8');
+  if (ab.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ab, bb);
+};
+
+const addUserTokensController = async (req, res) => {
+  try {
+    const { email, secret, amount } = req.body;
+
+    if (!email || typeof email !== 'string' || !secret || typeof secret !== 'string') {
+      return res.status(400).json({ message: 'Invalid payload' });
+    }
+
+    // auth
+    if (!timingSafeEqual(secret, process.env.OPENID_CLIENT_SECRET)) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const parsedAmount = Number(amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      return res.status(400).json({ message: 'Invalid amount' });
+    }
+
+    // find user
+    const user = await findUser({ email }, 'email _id');
+    if (!user?._id) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+   const balanceConfig = {
+  enabled: true,
+}; 
+    
+
+    // create transaction (top up)
+    const result = await createTransaction({
+      user: user._id,
+      tokenType: 'credits',
+      context: 'admin',
+      rawAmount: parsedAmount,
+      balance: balanceConfig,
+    });
+
+    
+    if (result?.balance == null) {
+      return res.status(500).json({ message: result});
+    }
+
+    return res.status(200).json({
+      email: user.email,
+      amount: parsedAmount,
+      balance: result.balance,
+    });
+  } catch (e) {
+    console.error('[addUserTokensController]', e);
+
+    return res.status(500).json({
+      message: e?.message || 'Unexpected server error',
+      // útil solo en dev
+      stack: process.env.NODE_ENV === 'development' ? e?.stack : undefined,
+    });
+  }
+};
+
+
 module.exports = {
   getUserController,
   getTermsStatusController,
@@ -414,4 +558,6 @@ module.exports = {
   verifyEmailController,
   updateUserPluginsController,
   resendVerificationController,
+  ensureUserController,
+  addUserTokensController,
 };

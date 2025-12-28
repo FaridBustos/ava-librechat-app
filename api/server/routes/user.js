@@ -7,6 +7,8 @@ const {
   verifyEmailController,
   deleteUserController,
   getUserController,
+  ensureUserController,
+  addUserTokensController,
 } = require('~/server/controllers/UserController');
 const {
   verifyEmailLimiter,
@@ -27,5 +29,7 @@ router.post('/plugins', requireJwtAuth, updateUserPluginsController);
 router.delete('/delete', requireJwtAuth, canDeleteAccount, configMiddleware, deleteUserController);
 router.post('/verify', verifyEmailController);
 router.post('/verify/resend', verifyEmailLimiter, resendVerificationController);
+router.post('/ensure', ensureUserController);
+router.post('/balance/add', addUserTokensController);
 
 module.exports = router;

@@ -134,10 +134,10 @@ registration:
   # - "gmail.com"
 
 # Example Balance settings
-# balance:
-#   enabled: false
-#   startBalance: 20000
-#   autoRefillEnabled: false
+ balance:
+   enabled: true
+   startBalance: 0
+   autoRefillEnabled: false
 #   refillIntervalValue: 30
 #   refillIntervalUnit: 'days'
 #   refillAmount: 10000
