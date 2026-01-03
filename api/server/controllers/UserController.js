@@ -422,34 +422,77 @@ const maybeUninstallOAuthMCP = async (userId, pluginKey, appConfig) => {
   await flowManager.deleteFlow(flowId, 'mcp_oauth');
 };
 
+/**
+ * ============================
+ * Helpers
+ * ============================
+ */
+
+const timingSafeEqual = (a, b) => {
+  const ab = Buffer.from(a ?? '', 'utf8');
+  const bb = Buffer.from(b ?? '', 'utf8');
+  if (ab.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ab, bb);
+};
+
+/**
+ * ✅ Balance real de LibreChat
+ * Fuente única: Balance.tokenCredits
+ */
+const getUserBalance = async (userId) => {
+  try {
+    if (!userId) return 0;
+
+    const balDoc = await Balance.findOne(
+      { user: userId },
+      'tokenCredits',
+    ).lean();
+
+    if (!balDoc) return 0;
+
+    return Number.isFinite(balDoc.tokenCredits)
+      ? balDoc.tokenCredits
+      : 0;
+  } catch (err) {
+    logger.error('[getUserBalance] failed', err);
+    return 0;
+  }
+};
+
+/**
+ * ============================
+ * Controllers
+ * ============================
+ */
+
 const ensureUserController = async (req, res) => {
   try {
     const { email, secret } = req.body;
 
     // 1️⃣ Validaciones básicas
-    if (
-      !email ||
-      typeof email !== 'string' ||
-      !secret ||
-      typeof secret !== 'string'
-    ) {
+    if (!email || typeof email !== 'string' || !secret || typeof secret !== 'string') {
       return res.status(400).json({ message: 'Invalid payload' });
     }
 
-    // 2️⃣ Verificar secret contra env
+    // 2️⃣ Auth por secret
     if (!timingSafeEqual(secret, process.env.OPENID_CLIENT_SECRET)) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    // 3️⃣ Buscar usuario por email
+    // 3️⃣ Buscar usuario
     let user = await findUser(
       { email },
-      'email _id provider role username name emailVerified'
+      'email _id provider role username name emailVerified',
     );
 
     if (user) {
+      const balance = await getUserBalance(user._id);
+
       return res.status(200).json({
-        user,
+        user: {
+          ...(user.toObject?.() ?? user),
+          balance,
+        },
         created: false,
       });
     }
@@ -464,31 +507,33 @@ const ensureUserController = async (req, res) => {
       name: email,
       role: 'user',
       avatar: null,
-      emailVerified: true, // OpenID ya validó el email
+      emailVerified: true,
     };
 
     user = await createUser(
       newUserData,
       appConfig.balance,
-      true, // disableTTL
-      true
+      true,
+      true,
     );
 
+    const balance = await getUserBalance(user._id);
+
     return res.status(200).json({
-      user,
+      user: {
+        ...(user.toObject?.() ?? user),
+        balance,
+      },
       created: true,
     });
   } catch (e) {
+    logger.error('[ensureUserController]', e);
     return res.status(500).json({ message: 'Something went wrong.' });
   }
 };
 
-const timingSafeEqual = (a, b) => {
-  const ab = Buffer.from(a ?? '', 'utf8');
-  const bb = Buffer.from(b ?? '', 'utf8');
-  if (ab.length !== bb.length) return false;
-  return crypto.timingSafeEqual(ab, bb);
-};
+
+
 
 const addUserTokensController = async (req, res) => {
   try {
