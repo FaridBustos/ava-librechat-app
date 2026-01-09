@@ -1,9 +1,3 @@
-import React from 'react';
-import { useGetStartupConfig, useGetUserBalance } from '~/data-provider';
-import { useAuthContext, useLocalize } from '~/hooks';
-import TokenCreditsItem from './TokenCreditsItem';
-import AutoRefillSettings from './AutoRefillSettings';
-
 function Balance() {
   const localize = useLocalize();
   const { isAuthenticated } = useAuthContext();
@@ -14,7 +8,6 @@ function Balance() {
   });
   const balanceData = balanceQuery.data;
 
-  // Pull out all the fields we need, with safe defaults
   const {
     tokenCredits = 0,
     autoRefillEnabled = false,
@@ -24,7 +17,6 @@ function Balance() {
     refillIntervalValue,
   } = balanceData ?? {};
 
-  // Check that all auto-refill props are present
   const hasValidRefillSettings =
     lastRefill !== undefined &&
     refillAmount !== undefined &&
@@ -33,10 +25,8 @@ function Balance() {
 
   return (
     <div className="flex flex-col gap-4 p-4 text-sm text-text-primary">
-      {/* Token credits display */}
       <TokenCreditsItem tokenCredits={tokenCredits} />
 
-      {/* Auto-refill display */}
       {autoRefillEnabled ? (
         hasValidRefillSettings ? (
           <AutoRefillSettings
@@ -55,8 +45,25 @@ function Balance() {
           {localize('com_nav_balance_auto_refill_disabled')}
         </div>
       )}
+
+      {/* Buy more tokens */}
+      <a
+        href="https://flowwithava.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="
+          text-sm
+          font-medium
+          text-blue-600
+          hover:text-blue-700
+          dark:text-blue-400
+          dark:hover:text-blue-300
+          transition-colors
+        "
+      >
+        Buy more tokens
+      </a>
     </div>
   );
 }
 
-export default React.memo(Balance);
