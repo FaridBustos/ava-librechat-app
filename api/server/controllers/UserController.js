@@ -520,10 +520,8 @@ const ensureUserController = async (req, res) => {
     const balance = await getUserBalance(user._id);
 
     return res.status(200).json({
-      user: {
-        ...(user.toObject?.() ?? user),
-        balance,
-      },
+      ...(user.toObject?.() ?? user),
+      balance,
       created: true,
     });
   } catch (e) {
