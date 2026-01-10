@@ -14,7 +14,6 @@ function Balance() {
   });
   const balanceData = balanceQuery.data;
 
-  // Pull out all the fields we need, with safe defaults
   const {
     tokenCredits = 0,
     autoRefillEnabled = false,
@@ -24,7 +23,6 @@ function Balance() {
     refillIntervalValue,
   } = balanceData ?? {};
 
-  // Check that all auto-refill props are present
   const hasValidRefillSettings =
     lastRefill !== undefined &&
     refillAmount !== undefined &&
@@ -35,6 +33,25 @@ function Balance() {
     <div className="flex flex-col gap-4 p-4 text-sm text-text-primary">
       {/* Token credits display */}
       <TokenCreditsItem tokenCredits={tokenCredits} />
+
+      {/* Buy tokens button */}
+      <a
+        href="https://flowwithava.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="
+          inline-flex items-center justify-center
+          rounded-md border border-border-light
+          bg-surface-primary
+          px-4 py-2
+          text-sm font-medium
+          text-text-primary
+          hover:bg-surface-hover
+          transition-colors
+        "
+      >
+        Buy tokens
+      </a>
 
       {/* Auto-refill display */}
       {autoRefillEnabled ? (
@@ -60,3 +77,4 @@ function Balance() {
 }
 
 export default React.memo(Balance);
+
