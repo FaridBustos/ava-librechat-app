@@ -36,7 +36,7 @@ function Balance() {
 
       {/* Buy tokens button */}
       <a
-        href="https://flowwithava.com"
+        href="https://flowwithava.com/product/token-pack/"
         target="_blank"
         rel="noopener noreferrer"
         className="
