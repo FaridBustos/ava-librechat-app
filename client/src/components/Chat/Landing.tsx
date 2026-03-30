@@ -66,11 +66,14 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
 
   const getGreeting = useCallback(() => {
     if (typeof startupConfig?.interface?.customWelcome === 'string') {
-      const customWelcome = startupConfig.interface.customWelcome;
-      // Replace {{user.name}} with actual user name if available
-      if (user?.name && customWelcome.includes('{{user.name}}')) {
-        return customWelcome.replace(/{{user.name}}/g, user.name);
+      let customWelcome = startupConfig.interface.customWelcome;
+
+      // Support both {{user.email}} and legacy {{user.name}}
+      if (user?.email) {
+        customWelcome = customWelcome.replace(/{{user.email}}/g, user.email);
+        customWelcome = customWelcome.replace(/{{user.name}}/g, user.email);
       }
+
       return customWelcome;
     }
 
@@ -80,26 +83,19 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
     const dayOfWeek = now.getDay();
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
-    // Early morning (midnight to 4:59 AM)
     if (hours >= 0 && hours < 5) {
       return localize('com_ui_late_night');
-    }
-    // Morning (6 AM to 11:59 AM)
-    else if (hours < 12) {
+    } else if (hours < 12) {
       if (isWeekend) {
         return localize('com_ui_weekend_morning');
       }
       return localize('com_ui_good_morning');
-    }
-    // Afternoon (12 PM to 4:59 PM)
-    else if (hours < 17) {
+    } else if (hours < 17) {
       return localize('com_ui_good_afternoon');
-    }
-    // Evening (5 PM to 8:59 PM)
-    else {
+    } else {
       return localize('com_ui_good_evening');
     }
-  }, [localize, startupConfig?.interface?.customWelcome, user?.name]);
+  }, [localize, startupConfig?.interface?.customWelcome, user?.email]);
 
   const handleLineCountChange = useCallback((count: number) => {
     setTextHasMultipleLines(count > 1);
@@ -135,7 +131,7 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
   const greetingText =
     typeof startupConfig?.interface?.customWelcome === 'string'
       ? getGreeting()
-      : getGreeting() + (user?.name ? ', ' + user.name : '');
+      : getGreeting() + (user?.email ? ', ' + user.email : '');
 
   return (
     <div
@@ -184,7 +180,7 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
             </div>
           ) : (
             <SplitText
-              key={`split-text-${greetingText}${user?.name ? '-user' : ''}`}
+              key={`split-text-${greetingText}${user?.email ? '-user' : ''}`}
               text={greetingText}
               className={`${getTextSizeClass(greetingText)} font-medium text-text-primary`}
               delay={50}
