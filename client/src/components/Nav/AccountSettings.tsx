@@ -36,7 +36,7 @@ function AccountSettings() {
           className="mt-2 grow overflow-hidden text-ellipsis whitespace-nowrap text-left text-text-primary"
           style={{ marginTop: '0', marginLeft: '0' }}
         >
-          {user?.email ?? localize('com_nav_user')}
+          {user?.name ?? localize('com_nav_user')}
         </div>
       </Select.Select>
       <Select.SelectPopover
