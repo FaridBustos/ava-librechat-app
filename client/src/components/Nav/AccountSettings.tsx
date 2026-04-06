@@ -19,6 +19,9 @@ function AccountSettings() {
   const [showFiles, setShowFiles] = useState(false);
   const accountSettingsButtonRef = useRef<HTMLButtonElement>(null);
 
+  // ✅ Extraer solo el username del email
+  const username = user?.email ? user.email.split('@')[0] : null;
+
   return (
     <Select.SelectProvider>
       <Select.Select
@@ -32,13 +35,15 @@ function AccountSettings() {
             <Avatar user={user} size={32} />
           </div>
         </div>
+
         <div
           className="mt-2 grow overflow-hidden text-ellipsis whitespace-nowrap text-left text-text-primary"
           style={{ marginTop: '0', marginLeft: '0' }}
         >
-          {user?.name ?? localize('com_nav_user')}
+          {username ?? localize('com_nav_user')}
         </div>
       </Select.Select>
+
       <Select.SelectPopover
         className="popover-ui w-[305px] rounded-lg md:w-[235px]"
         style={{
@@ -47,9 +52,11 @@ function AccountSettings() {
         }}
       >
         <div className="text-token-text-secondary ml-3 mr-2 py-2 text-sm" role="note">
-          {user?.email ?? localize('com_nav_user')}
+          {username ?? localize('com_nav_user')}
         </div>
+
         <DropdownMenuSeparator />
+
         {startupConfig?.balance?.enabled === true && balanceQuery.data != null && (
           <>
             <div className="text-token-text-secondary ml-3 mr-2 py-2 text-sm" role="note">
@@ -59,6 +66,7 @@ function AccountSettings() {
             <DropdownMenuSeparator />
           </>
         )}
+
         <Select.SelectItem
           value=""
           onClick={() => setShowFiles(true)}
@@ -67,6 +75,7 @@ function AccountSettings() {
           <FileText className="icon-md" aria-hidden="true" />
           {localize('com_nav_my_files')}
         </Select.SelectItem>
+
         {startupConfig?.helpAndFaqURL !== '/' && (
           <Select.SelectItem
             value=""
@@ -77,6 +86,7 @@ function AccountSettings() {
             {localize('com_nav_help_faq')}
           </Select.SelectItem>
         )}
+
         <Select.SelectItem
           value=""
           onClick={() => setShowSettings(true)}
@@ -85,7 +95,9 @@ function AccountSettings() {
           <GearIcon className="icon-md" aria-hidden="true" />
           {localize('com_nav_settings')}
         </Select.SelectItem>
+
         <DropdownMenuSeparator />
+
         <Select.SelectItem
           aria-selected={true}
           onClick={() => logout()}
@@ -96,6 +108,7 @@ function AccountSettings() {
           {localize('com_nav_log_out')}
         </Select.SelectItem>
       </Select.SelectPopover>
+
       {showFiles && (
         <MyFilesModal
           open={showFiles}
@@ -103,6 +116,7 @@ function AccountSettings() {
           triggerRef={accountSettingsButtonRef}
         />
       )}
+
       {showSettings && <Settings open={showSettings} onOpenChange={setShowSettings} />}
     </Select.SelectProvider>
   );
