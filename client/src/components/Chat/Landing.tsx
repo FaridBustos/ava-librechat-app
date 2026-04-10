@@ -68,10 +68,10 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
     if (typeof startupConfig?.interface?.customWelcome === 'string') {
       let customWelcome = startupConfig.interface.customWelcome;
 
-      // Support both {{user.email}} and legacy {{user.name}}
       if (user?.email) {
-        customWelcome = customWelcome.replace(/{{user.email}}/g, user.email);
-        customWelcome = customWelcome.replace(/{{user.name}}/g, user.email);
+        const emailName = user.email.split('@')[0];
+        customWelcome = customWelcome.replace(/{{user.email}}/g, emailName);
+        customWelcome = customWelcome.replace(/{{user.name}}/g, emailName);
       }
 
       return customWelcome;
@@ -131,7 +131,7 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
   const greetingText =
     typeof startupConfig?.interface?.customWelcome === 'string'
       ? getGreeting()
-      : getGreeting() + (user?.email ? ', ' + user.email : '');
+      : getGreeting() + (user?.email ? ', ' + user.email.split('@')[0] : '');
 
   return (
     <div
