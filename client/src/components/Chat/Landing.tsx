@@ -63,15 +63,15 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
 
   const name = entity?.name ?? '';
   const description = (entity?.description || conversation?.greeting) ?? '';
+  const userName = user?.name?.trim() ?? '';
 
   const getGreeting = useCallback(() => {
     if (typeof startupConfig?.interface?.customWelcome === 'string') {
       let customWelcome = startupConfig.interface.customWelcome;
 
-      if (user?.email) {
-        const emailName = user.email.split('@')[0];
-        customWelcome = customWelcome.replace(/{{user.email}}/g, emailName);
-        customWelcome = customWelcome.replace(/{{user.name}}/g, emailName);
+      if (userName) {
+        customWelcome = customWelcome.replace(/{{user.email}}/g, userName);
+        customWelcome = customWelcome.replace(/{{user.name}}/g, userName);
       }
 
       return customWelcome;
@@ -95,7 +95,7 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
     } else {
       return localize('com_ui_good_evening');
     }
-  }, [localize, startupConfig?.interface?.customWelcome, user?.email]);
+  }, [localize, startupConfig?.interface?.customWelcome, userName]);
 
   const handleLineCountChange = useCallback((count: number) => {
     setTextHasMultipleLines(count > 1);
@@ -131,7 +131,7 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
   const greetingText =
     typeof startupConfig?.interface?.customWelcome === 'string'
       ? getGreeting()
-      : getGreeting() + (user?.email ? ', ' + user.email.split('@')[0] : '');
+      : getGreeting() + (userName ? ', ' + userName : '');
 
   return (
     <div
@@ -180,7 +180,7 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
             </div>
           ) : (
             <SplitText
-              key={`split-text-${greetingText}${user?.email ? '-user' : ''}`}
+              key={`split-text-${greetingText}${userName ? '-user' : ''}`}
               text={greetingText}
               className={`${getTextSizeClass(greetingText)} font-medium text-text-primary`}
               delay={50}
